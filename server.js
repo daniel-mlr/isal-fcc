@@ -11,7 +11,7 @@ const Bing = require('node-bing-api')({
 })
 const searchTerm = require('./models/searchmodel.js')
 
-app.use(bodyParser.json());
+app.use(bodyParser.json())
 
 const connectURI = process.env.MONGODB_URI || 'mongodb://localhost/searchTerms' 
 mongoose.Promise = global.Promise; // to remove deprecation warning
@@ -37,10 +37,21 @@ app.get('/', (req, res) => {
     res.send('to do: front page')
 })
 
-app.get('/api/recent', (req, res, next) => {
-    searchTerm.find({}, (err, data) => {
-        if (err) return console.error('erreur dans searchTerm.find ' + err)
-        res.json(data)
+// get the most recent search
+app.get([ '/api/latest/imgsearch', '/api/latest/imagesearch' ], (req, res) => {
+
+    var query = searchTerm.find({}, {search_val:1}).sort({_id:-1}).limit(3);
+    query.exec( (err, data) => {
+        if (err) return console.error('erreur dans searchTerm.find ' + err);
+
+        var results = [];
+        for (var i=0; i<3; i++) {
+            results.push({
+                'term': data[i].search_val, 
+                'when': data[i]._id.getTimestamp()
+            })
+        }
+        res.json(results)
     })
 })
 
@@ -55,20 +66,10 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
         // search_date: new Date()
     })
 
-    /*
-    res.json({
-        'search_val':  search_val,
-        'offset':  offset,
-        'count':  count
-    })
-    */
-
     // basic parameters validations 
     var search_params = {};
     search_params.offset = validateNumber(offset, 0);
     search_params.count = validateNumber(count, 10);
-    console.log('offset: ' + offset);
-    console.log('search_params.offset: ' + search_params.offset)
     
     // save the search in db
     data.save(err => {
@@ -76,15 +77,24 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
         console.log('saving ' + search_val)
     })
 
-    res.json(search_params)
+    // res.json(search_params)
+    console.log('search_params: ' + JSON.stringify(search_params))
+    // next()
 
-    /*
     // Bing.images(search_val, {count:3, offset:0}, (error, response, body) => {
     Bing.images(search_val, search_params, (error, response, body) => {
+       
         var { totalEstimatedMatches } = body;
+        var distFromStart = search_val.count + search_val.offset;
+       
+        if (totalEstimatedMatches < distFromStart) {
+            // not enough matches
+            res.json(['not enough matches'])
+        }
+        console.log('total est. matches: ' + totalEstimatedMatches)
 
         var results = [];
-        for (var i=0; i < 10; i++) {
+        for (var i=0; i < search_params.count; i++) {
             results.push({
                 'url': body.value[i].contentUrl,
                 'snippte': body.value[i].name,
@@ -95,6 +105,7 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
         res.json(results)
         // res.json(body)
     })
+    /*
     */
 })
 
@@ -105,10 +116,6 @@ app.get(['/api/imgsearch', '/api/imagesearch/*'], (req, res) => {
     })
 })
 
-// get the most recent search
-app.get([ '/api/latest/imgsearch', '/api/latest/imagesearch' ], (req, res) => {
-    // search last, todo
-})
 
 // get the most frequent search
 app.get([ '/api/top/imgsearch', '/api/top/imagesearch' ], (req, res) => {
