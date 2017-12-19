@@ -39,25 +39,24 @@ app.get('/', (req, res) => {
 // get the most recent search
 var count_recent = 10;
 app.get(['/api/latest/imgsearch', '/api/latest/imagesearch'], (req, res) => {
-
-    // var query = searchTerm.find({}, {search_val:1 })
     searchTerm.find({}, {search_val:1 })
         .sort({_id:-1})
         .limit(count_recent)
-        // ;
-    // query.exec( (err, data) => {
         .exec( (err, data) => {
             if (err) return console.error('erreur dans searchTerm.find ' + err);
-            /*
-               var results = [];
-               for (var i=0; i<count_recent; i++) {
-               results.push({
-               'term': data[i].search_val, 
-               'when': data[i]._id.getTimestamp()
-               })
-               }
-               res.json(results)
-               */
+           
+            // When defining a virtual field in the model ('when'), it comes
+            // with its own id field, which is a copy of the corresponding _id
+            // field.  This _id field also appear in the results despite the
+            // fact that I specified only one field, '{search_val: 1}', to
+            // appear in the result.  Why is it so?
+            //
+            // Also, how to rename 'search_val' to 'term' in the result?
+            //
+            // More, according to express.js reference, res.json([body]) uses
+            // JSON.stringify to transform [body]. So why 
+            // res.json(data, ['search_val', 'when']) doesn't work?
+            
             res.send(JSON.stringify(data, ['search_val', 'when']))
         })
 })
@@ -96,9 +95,9 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
         if (totalEstimatedMatches < distFromStart) {
             res.json(['not enough matches'])
         }
-        // console.log('total est. matches: ' + totalEstimatedMatches)
 
         // prepare and display the search results
+        // (there must be a better way to achieve this)
         var results = [];
         for (var i=0; i < search_params.count; i++) {
             results.push({
@@ -111,8 +110,6 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
         res.json(results)
         // res.json(body)
     })
-    /*
-    */
 })
 
 
@@ -129,8 +126,10 @@ app.get([ '/api/top/imgsearch', '/api/top/imagesearch' ], (req, res) => {
     // search most used, todo
 })
 
+
 // all other routes are directed here
 app.get('*', (req, res) => {res.status(404).end('404 - page not found')})
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`server listening on port ${PORT}`))
