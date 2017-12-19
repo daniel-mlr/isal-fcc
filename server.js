@@ -3,7 +3,6 @@
 require('dotenv').config()
 const express = require('express')
 const app = express();
-const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
 const Bing = require('node-bing-api')({
     accKey: process.env.BING_ACCKEY2, 
@@ -11,51 +10,59 @@ const Bing = require('node-bing-api')({
 })
 const searchTerm = require('./models/searchmodel.js')
 
-app.use(bodyParser.json())
 
 const connectURI = process.env.MONGODB_URI || 'mongodb://localhost/searchTerms' 
 mongoose.Promise = global.Promise; // to remove deprecation warning
-mongoose.connect(connectURI, {useMongoClient: true})
+mongoose.connect(connectURI, {useMongoClient: true}).then(
+        () => { console.log('mongoose connected successfully') },
+        (err) => {throw new Error(err + '=== mongoose failed to connect')})
+
 
 // catch malformed uri parameters (why doesn't express take care of that?)
 // no path specified, then the function is executed on every request.
 app.use(function(req, res, next) {
     var err = null;
-    try {
-        decodeURIComponent(req.path)
-    }
-    catch(e) {
-        err = e;
-    }
+    try { decodeURIComponent(req.path) }
+    catch(e) { err = e; }
     if (err){
         console.log('erreur décodage', err, req.url);
         return res.status(400).end('400 - bad request')}
     next();
 });
 
+
+// home page
 app.get('/', (req, res) => {
     res.send('to do: front page')
 })
 
 // get the most recent search
-app.get([ '/api/latest/imgsearch', '/api/latest/imagesearch' ], (req, res) => {
+var count_recent = 10;
+app.get(['/api/latest/imgsearch', '/api/latest/imagesearch'], (req, res) => {
 
-    var query = searchTerm.find({}, {search_val:1}).sort({_id:-1}).limit(3);
-    query.exec( (err, data) => {
-        if (err) return console.error('erreur dans searchTerm.find ' + err);
-
-        var results = [];
-        for (var i=0; i<3; i++) {
-            results.push({
-                'term': data[i].search_val, 
-                'when': data[i]._id.getTimestamp()
-            })
-        }
-        res.json(results)
-    })
+    // var query = searchTerm.find({}, {search_val:1 })
+    searchTerm.find({}, {search_val:1 })
+        .sort({_id:-1})
+        .limit(count_recent)
+        // ;
+    // query.exec( (err, data) => {
+        .exec( (err, data) => {
+            if (err) return console.error('erreur dans searchTerm.find ' + err);
+            /*
+               var results = [];
+               for (var i=0; i<count_recent; i++) {
+               results.push({
+               'term': data[i].search_val, 
+               'when': data[i]._id.getTimestamp()
+               })
+               }
+               res.json(results)
+               */
+            res.send(JSON.stringify(data, ['search_val', 'when']))
+        })
 })
 
-// Get call for an image
+// Get call for an image search
 app.get('/api/imgsearch/:search_val*', (req, res, next) => {
     
     var { search_val } = req.params;
@@ -63,7 +70,6 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
     
     var data = new searchTerm({
         search_val 
-        // search_date: new Date()
     })
 
     // basic parameters validations 
@@ -81,18 +87,18 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
     console.log('search_params: ' + JSON.stringify(search_params))
     // next()
 
-    // Bing.images(search_val, {count:3, offset:0}, (error, response, body) => {
+    // search on Bing
     Bing.images(search_val, search_params, (error, response, body) => {
-       
+        
+        // check if enough matches are returned to satisfy offset and count
         var { totalEstimatedMatches } = body;
         var distFromStart = search_val.count + search_val.offset;
-       
         if (totalEstimatedMatches < distFromStart) {
-            // not enough matches
             res.json(['not enough matches'])
         }
-        console.log('total est. matches: ' + totalEstimatedMatches)
+        // console.log('total est. matches: ' + totalEstimatedMatches)
 
+        // prepare and display the search results
         var results = [];
         for (var i=0; i < search_params.count; i++) {
             results.push({
@@ -110,6 +116,7 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
 })
 
 
+// display instructions if no query string are provided
 app.get(['/api/imgsearch', '/api/imagesearch/*'], (req, res) => {
     res.json({
         'usage': req.hostname + '/api/imgsearch/<your search terms>?offset=<offset>&count=<count per page>'
@@ -117,16 +124,17 @@ app.get(['/api/imgsearch', '/api/imagesearch/*'], (req, res) => {
 })
 
 
-// get the most frequent search
+// get the most frequent search (extra feature)
 app.get([ '/api/top/imgsearch', '/api/top/imagesearch' ], (req, res) => {
     // search most used, todo
 })
 
-// all other routes
+// all other routes are directed here
 app.get('*', (req, res) => {res.status(404).end('404 - page not found')})
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`server listening on port ${PORT}`))
+
 
 // validation functions
 function validateNumber(str, default_val) {
