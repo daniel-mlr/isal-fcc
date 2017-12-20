@@ -68,21 +68,23 @@ app.get(['/api/latest/imgsearch', '/api/latest/imagesearch'], (req, res) => {
         })
 })
 
+
 // Get call for an image search
 app.get('/api/imgsearch/:search_val*', (req, res, next) => {
     
     var { search_val } = req.params;
     var { offset, count, market } = req.query;
     
-    var data = new searchTerm({
-        search_val 
-    })
-
     // basic parameters validations 
     var search_params = {};
     search_params.offset = validateNumber(offset, 0);
     search_params.count = validateNumber(count, 10);
     
+    // create document to be saved
+    var data = new searchTerm({
+        search_val 
+    })
+
     // save the search in db
     data.save(err => {
         if (err) { console.log('erreur de sauvegarde dans la BD: ' + err) }
@@ -94,7 +96,8 @@ app.get('/api/imgsearch/:search_val*', (req, res, next) => {
     // next()
 
     // search on Bing
-    Bing.images(search_val, search_params, (error, response, body) => {
+    Bing.images(search_val, search_params, (err, response, body) => {
+        if (err) return console.log('erreur connection avec Bing: ' + err);
         
         // check if enough matches are returned to satisfy offset and count
         var { totalEstimatedMatches } = body;
