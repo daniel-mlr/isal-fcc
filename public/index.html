@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>FCC Image Search</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="insert content">
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/furtive/2.3.0/furtive.min.css">
+  <link rel="stylesheet" type="text/css" href="/css/main.css">
+</head>
+<body>
+  <header class="grd">
+    <h2><small>Free Code Camp</small> Image Search Abstraction Layer</h2>
+  </header>
+  <div class="grd">
+    <p>This is part of the requirements for the <a href="http://www.freecodecamp.org">Free Code Camp</a> Backend Development Certificate</p>
+    <h4>User stories:</h4>
+    <ol>
+      <li>I can get the image URLs, alt text and page urls for a set of images relating to a given search string.</li>
+      <li>I can paginate through the responses by adding a <code>?offset=2</code> parameter to the URL.</li>
+      <li>I can get a list of the most recently submitted search strings.</li>
+    </ol>
+    <h5>Example usage:</h5>
+    <p>
+     To search for images of 'extincted species', returning 10 results with an offset of 10, do:<br>
+     <code>https://imsearch-dm-freecodecamp/api/imgsearch/extinct species?offset=10&count=10</code>
+    </p>
+    <p>
+     To browse the 10 most recent queries, do:
+     <code>https://imsearch-dm-freecodecamp/api/latest/imgsearch</code>
+    </p>
+  </div>
+</body>
+</html>

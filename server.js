@@ -33,7 +33,7 @@ app.use(function(req, res, next) {
 
 // home page
 app.get('/', (req, res) => {
-    res.send('to do: front page')
+    res.sendFile(process.cwd() + '/public/index.html')
 })
 
 // get the most recent search
@@ -56,8 +56,15 @@ app.get(['/api/latest/imgsearch', '/api/latest/imagesearch'], (req, res) => {
             // More, according to express.js reference, res.json([body]) uses
             // JSON.stringify to transform [body]. So why 
             // res.json(data, ['search_val', 'when']) doesn't work?
-            
-            res.send(JSON.stringify(data, ['search_val', 'when']))
+
+            // res.send(JSON.stringify(data, ['search_val', 'when']))
+            //
+            // Clunky workaround to rename 'search_val' to 'term':
+            var results = []
+            for (var i=0; i< data.length; i++) {
+                results.push({term: data[i].search_val, when: data[i].when })
+            }
+            res.json(results)
         })
 })
 
